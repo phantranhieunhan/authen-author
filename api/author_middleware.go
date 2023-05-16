@@ -20,13 +20,19 @@ var (
 	userNoProvided       = errors.New("userNoProvided")
 )
 
-var rbacDecider = map[string][]string{
-	"/accounts/:id": {RoleStudent},
+type Url struct {
+	Method string
+	Path   string
+}
+
+var rbacDecider = map[Url][]string{
+	{Method: http.MethodGet, Path: "/accounts/:id"}:  {RoleCentreStaff},
+	{Method: http.MethodPost, Path: "/accounts/:id"}: {RoleSchoolAdmin},
 }
 
 type GroupDecider struct {
 	GroupFetcher  func(ctx context.Context, userID string) ([]string, error)
-	AllowedGroups map[string][]string
+	AllowedGroups map[Url][]string
 }
 
 func NewGroupDecider(store db.Store) *GroupDecider {
@@ -46,8 +52,8 @@ func NewGroupDecider(store db.Store) *GroupDecider {
 }
 
 // Check checks if user allowed to call a method
-func (g *GroupDecider) Check(ctx context.Context, userID, fullMethod string) (groups []string, err error) {
-	allowedGroups, ok := g.AllowedGroups[fullMethod]
+func (g *GroupDecider) Check(ctx context.Context, userID, method, path string) (groups []string, err error) {
+	allowedGroups, ok := g.AllowedGroups[Url{Method: method, Path: path}]
 	if !ok {
 		return nil, sttNoDeciderProvided
 	}
@@ -82,7 +88,8 @@ func authorMiddleware(store db.Store) gin.HandlerFunc {
 			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errorResponse(userNoProvided))
 			return
 		}
-		_, err := gd.Check(ctx, authPayload.Username, ctx.FullPath())
+		// ctx.Pa
+		_, err := gd.Check(ctx, authPayload.Username, ctx.Request.Method, ctx.FullPath())
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusForbidden, errorResponse(err))
 			return

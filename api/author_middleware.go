@@ -27,7 +27,7 @@ type Url struct {
 
 var rbacDecider = map[Url][]string{
 	{Method: http.MethodGet, Path: "/accounts/:id"}:  {RoleCentreStaff},
-	{Method: http.MethodPost, Path: "/accounts/:id"}: {RoleSchoolAdmin},
+	{Method: http.MethodPost, Path: "/accounts/:id"}: {RoleSchoolAdmin, RoleCentreLead},
 	{Method: http.MethodGet, Path: "/demo"}: nil, // no need permission
 }
 

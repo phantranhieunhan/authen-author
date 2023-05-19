@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -11,7 +12,17 @@ import (
 	"github.com/lib/pq"
 
 	db "github.com/phantranhieunhan/authen-author/db/sqlc"
+	"github.com/phantranhieunhan/authen-author/token"
 	"github.com/phantranhieunhan/authen-author/util"
+)
+
+var (
+	ErrCannotCreateSession = errors.New("cannot create session")
+)
+
+const (
+	AccessTokenIDPrefix  = "access_token_id_%s"
+	RefreshTokenIDPrefix = "refresh_token_id_%s"
 )
 
 type createUserRequest struct {
@@ -140,6 +151,8 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		IsBlocked:    false,
 		ExpiresAt:    refreshPayload.ExpiredAt,
 	})
+
+	// err = server.session.CreateToken(ctx, fmt.Sprintf(RefreshTokenIDPrefix, refreshPayload.ID), server.config.RefreshTokenDuration)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -209,6 +222,13 @@ func (server *Server) logoutUser(ctx *gin.Context) {
 	}
 
 	err = server.store.DeleteSession(ctx, refreshPayload.ID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	err = server.session.CreateToken(ctx, fmt.Sprintf(AccessTokenIDPrefix, authPayload.ID.String()), time.Until(authPayload.ExpiredAt))
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return

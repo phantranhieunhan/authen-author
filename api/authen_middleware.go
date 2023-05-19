@@ -2,10 +2,12 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/phantranhieunhan/authen-author/db/redis"
 	"github.com/phantranhieunhan/authen-author/token"
 )
 
@@ -15,7 +17,7 @@ const (
 	authorizationPayloadKey = "authorization_payload"
 )
 
-func authenMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
+func authenMiddleware(tokenMaker token.Maker, session redis.SessionStore) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
 		if len(authorizationHeader) == 0 {
@@ -45,6 +47,15 @@ func authenMiddleware(tokenMaker token.Maker) gin.HandlerFunc {
 			return
 		}
 
+		token, err := session.GetToken(ctx, fmt.Sprintf(AccessTokenIDPrefix, payload.ID.String()))
+		if err != nil && err != redis.ErrNilSession {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+			return
+		}
+		if token != "" {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("Token is expired.")))
+			return
+		}
 		ctx.Set(authorizationPayloadKey, payload)
 		ctx.Next()
 	}

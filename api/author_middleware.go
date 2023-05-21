@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+
 	db "github.com/phantranhieunhan/authen-author/db/sqlc"
 	"github.com/phantranhieunhan/authen-author/token"
 	"github.com/phantranhieunhan/authen-author/util"
@@ -28,7 +29,7 @@ type Url struct {
 var rbacDecider = map[Url][]string{
 	{Method: http.MethodGet, Path: "/accounts/:id"}:  {RoleCentreStaff},
 	{Method: http.MethodPost, Path: "/accounts/:id"}: {RoleSchoolAdmin, RoleCentreLead},
-	{Method: http.MethodGet, Path: "/demo"}: nil, // no need permission
+	{Method: http.MethodGet, Path: "/demo"}:          nil, // no need permission
 }
 
 type GroupDecider struct {

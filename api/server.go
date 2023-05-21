@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/phantranhieunhan/authen-author/db/redis"
 	db "github.com/phantranhieunhan/authen-author/db/sqlc"
 	"github.com/phantranhieunhan/authen-author/token"
 	"github.com/phantranhieunhan/authen-author/util"
@@ -15,10 +16,11 @@ type Server struct {
 	store      db.Store
 	router     *gin.Engine
 	tokenMaker token.Maker
+	session    redis.SessionStore
 }
 
 // NewServer creates a new HTTP server and set up routing.
-func NewServer(config util.Config, store db.Store) (*Server, error) {
+func NewServer(config util.Config, store db.Store, session redis.SessionStore) (*Server, error) {
 	tokenMaker, err := token.NewPasetoMaker(config.TokenSymmetricKey)
 	if err != nil {
 		return nil, fmt.Errorf("cannot create token maker: %w", err)
@@ -27,6 +29,7 @@ func NewServer(config util.Config, store db.Store) (*Server, error) {
 		config:     config,
 		store:      store,
 		tokenMaker: tokenMaker,
+		session:    session,
 	}
 
 	server.setupRouter()
@@ -38,10 +41,11 @@ func (server *Server) setupRouter() {
 
 	router.POST("/users", server.createUser)
 	router.POST("/users/login", server.loginUser)
-	router.POST("/users/logout", server.logoutUser)
+
 	router.POST("/tokens/renew_access", server.renewAccessToken)
 
-	authRoutes := router.Group("/").Use(authenMiddleware(server.tokenMaker), authorMiddleware(server.store))
+	authRoutes := router.Group("/").Use(authenMiddleware(server.tokenMaker, server.session), authorMiddleware(server.store))
+	authRoutes.POST("/users/logout", server.logoutUser)
 	authRoutes.GET("/accounts/:id", server.getAccount)
 
 	server.router = router

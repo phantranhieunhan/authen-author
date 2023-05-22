@@ -26,6 +26,10 @@ test:
 migrate-create:
 	docker compose -f ${DOCKER_COMPOSE_FILE} --profile tools run --rm migrate create -ext sql -dir /migrations $(name)
 
+# https://viblo.asia/p/logging-su-dung-grafana-xem-log-tu-file-EoW4o0wlJml
+monitor-log:
+	docker compose -f monitor.docker-compose.yaml up
+
 server:
 	go run main.go
 

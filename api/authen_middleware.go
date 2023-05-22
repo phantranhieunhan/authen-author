@@ -2,12 +2,12 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/phantranhieunhan/authen-author/db/redis"
+	db "github.com/phantranhieunhan/authen-author/db/sqlc"
 	"github.com/phantranhieunhan/authen-author/token"
 )
 
@@ -17,7 +17,7 @@ const (
 	authorizationPayloadKey = "authorization_payload"
 )
 
-func authenMiddleware(tokenMaker token.Maker, session redis.SessionStore) gin.HandlerFunc {
+func authenMiddleware(tokenMaker token.Maker, store db.Store, session redis.SessionStore) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		authorizationHeader := ctx.GetHeader(authorizationHeaderKey)
 		if len(authorizationHeader) == 0 {
@@ -47,15 +47,29 @@ func authenMiddleware(tokenMaker token.Maker, session redis.SessionStore) gin.Ha
 			return
 		}
 
-		token, err := session.GetToken(ctx, fmt.Sprintf(AccessTokenIDPrefix, payload.ID.String()))
-		if err != nil && err != redis.ErrNilSession {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+		// check session is available on DB
+		count, err := store.CheckIsAvailable(ctx, payload.SourceID)
+		if err != nil {
+			ctx.AbortWithStatusJSON(http.StatusInternalServerError, errorResponse(err))
 			return
 		}
-		if token != "" {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("Token is expired.")))
+
+		if count == 0 {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, errors.New("Session is expired."))
 			return
 		}
+
+		// get token in redis
+		// token, err := session.GetToken(ctx, fmt.Sprintf(AccessTokenIDPrefix, payload.ID.String()))
+		// if err != nil && err != redis.ErrNilSession {
+		// 	ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(err))
+		// 	return
+		// }
+		// if token != "" {
+		// 	ctx.AbortWithStatusJSON(http.StatusUnauthorized, errorResponse(errors.New("Token is expired.")))
+		// 	return
+		// }
+
 		ctx.Set(authorizationPayloadKey, payload)
 		ctx.Next()
 	}

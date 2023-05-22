@@ -12,6 +12,8 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
+// https://viblo.asia/p/golang-log-ra-file-su-dung-zap-BQyJK9GwVMe
+
 type ConfigLogger struct {
 	Mode              string `yaml:"mode" mapstructure:"mode"`
 	DisableCaller     bool   `yaml:"disable_caller" mapstructure:"disable_caller"`

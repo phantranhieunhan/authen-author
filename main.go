@@ -3,7 +3,6 @@ package main
 import (
 	"database/sql"
 	"log"
-	"time"
 
 	redisAdapter "github.com/phantranhieunhan/authen-author/adapter/redis"
 	"github.com/phantranhieunhan/authen-author/api"
@@ -18,16 +17,17 @@ func main() {
 	if err != nil {
 		log.Fatal("cannot load config")
 	}
+	// init logger
+	logger.Newlogger(logger.ConfigLogger{})
 
-	logger.Newlogger(logger.ConfigLogger{
-		
-	})
-	forever := make(chan int)
-	log := logger.GetLogger()
-	for tick := range time.Tick(time.Millisecond) {
-		log.Debug(tick)
-	}
-	<-forever
+	// demo logger into file
+	// forever := make(chan int)
+	// log := logger.GetLogger()
+	// for tick := range time.Tick(time.Millisecond) {
+	// 	log.Debug(tick)
+	// }
+	// <-forever
+
 	conn, err := sql.Open(config.DBDriver, config.DBSource)
 	if err != nil {
 		log.Fatal("cannot connect to db")

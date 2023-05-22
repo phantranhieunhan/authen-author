@@ -12,7 +12,6 @@ import (
 	"github.com/lib/pq"
 
 	db "github.com/phantranhieunhan/authen-author/db/sqlc"
-	"github.com/phantranhieunhan/authen-author/token"
 	"github.com/phantranhieunhan/authen-author/util"
 )
 
@@ -124,18 +123,11 @@ func (server *Server) loginUser(ctx *gin.Context) {
 		ctx.JSON(http.StatusUnauthorized, errorResponse(err))
 		return
 	}
-	accessToken, accessPayload, err := server.tokenMaker.CreateToken(
-		user.Username,
-		server.config.AccessTokenDuration,
-	)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
 
 	refreshToken, refreshPayload, err := server.tokenMaker.CreateToken(
 		user.Username,
 		server.config.RefreshTokenDuration,
+		uuid.UUID{},
 	)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
@@ -153,6 +145,16 @@ func (server *Server) loginUser(ctx *gin.Context) {
 	})
 
 	// err = server.session.CreateToken(ctx, fmt.Sprintf(RefreshTokenIDPrefix, refreshPayload.ID), server.config.RefreshTokenDuration)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+		return
+	}
+
+	accessToken, accessPayload, err := server.tokenMaker.CreateToken(
+		user.Username,
+		server.config.AccessTokenDuration,
+		session.ID,
+	)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
@@ -221,18 +223,18 @@ func (server *Server) logoutUser(ctx *gin.Context) {
 		return
 	}
 
-	err = server.store.DeleteSession(ctx, refreshPayload.ID)
+	err = server.store.BlockSession(ctx, refreshPayload.ID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
 		return
 	}
 
-	authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
-	err = server.session.CreateToken(ctx, fmt.Sprintf(AccessTokenIDPrefix, authPayload.ID.String()), time.Until(authPayload.ExpiredAt))
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errorResponse(err))
-		return
-	}
+	// authPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	// err = server.session.CreateToken(ctx, fmt.Sprintf(AccessTokenIDPrefix, authPayload.ID.String()), time.Until(authPayload.ExpiredAt))
+	// if err != nil {
+	// 	ctx.JSON(http.StatusInternalServerError, errorResponse(err))
+	// 	return
+	// }
 
 	ctx.JSON(http.StatusOK, nil)
 }

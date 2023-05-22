@@ -12,6 +12,29 @@ import (
 	"github.com/google/uuid"
 )
 
+const blockSession = `-- name: BlockSession :exec
+UPDATE sessions
+SET is_blocked = true
+WHERE id = $1
+`
+
+func (q *Queries) BlockSession(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, blockSession, id)
+	return err
+}
+
+const checkIsAvailable = `-- name: CheckIsAvailable :one
+SELECT count(*) FROM sessions
+WHERE id = $1 and is_blocked = false LIMIT 1
+`
+
+func (q *Queries) CheckIsAvailable(ctx context.Context, id uuid.UUID) (int64, error) {
+	row := q.db.QueryRowContext(ctx, checkIsAvailable, id)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createSession = `-- name: CreateSession :one
 INSERT INTO sessions (
     id,

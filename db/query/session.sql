@@ -15,6 +15,15 @@ INSERT INTO sessions (
 SELECT * FROM sessions
 WHERE id = $1 LIMIT 1;
 
+-- name: CheckIsAvailable :one
+SELECT count(*) FROM sessions
+WHERE id = $1 and is_blocked = false LIMIT 1; 
+
 -- name: DeleteSession :exec
 DELETE FROM sessions
+WHERE id = $1;
+
+-- name: BlockSession :exec
+UPDATE sessions
+SET is_blocked = true
 WHERE id = $1;
